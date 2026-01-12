@@ -11,16 +11,62 @@ Imagine starting a long-running task with Gemini CLI and walking away. When it's
 - 🔌 **MCP Compatible**: Works out-of-the-box with Gemini CLI and other MCP clients.
 - 💬 **Two-Way Conversation**: Full "Reason and Act" loop support—the agent speaks, listens, and responds.
 
-## Prerequisites
+## Configuration & Setup
 
-- **Node.js** v18+
-- **Google Cloud Platform Project** with:
-  - Text-to-Speech API enabled
-  - Cloud Speech-to-Text API enabled
-- **Telephony Provider Account**:
-  - [Telnyx](https://telnyx.com) (Recommended, ~50% cheaper)
-  - [Twilio](https://twilio.com)
-- **Ngrok Account** (for local tunneling)
+### 1. Provider Setup
+
+#### 🔵 Option A: Telnyx (Recommended)
+*Cheaper (~$0.007/min) and straightforward.*
+1.  **Sign Up**: Go to [telnyx.com](https://telnyx.com) and create an account.
+2.  **Get a Number**: Buy a Voice-capable number in the portal.
+3.  **Create API Key**: Go to **Account Settings > Keys & Credentials** and create an API Key. This is your `CALLME_PHONE_AUTH_TOKEN`.
+4.  **Create Connection**:
+    - Go to **Voice > SIP Connections** (or Call Control Applications).
+    - Create a new "Call Control" application.
+    - Set the **Webhook URL** to your Ngrok URL + `/webhooks/voice` (e.g., `https://your-server.ngrok-free.app/webhooks/voice`).
+    - *Note: If running locally, you'll update this URL every time Ngrok restarts unless you have a static domain.*
+    - Copy the **Connection ID** (or App ID). This is your `CALLME_PHONE_ACCOUNT_SID`.
+5.  **Assign Number**: Assign your purchased number to this Connection/App.
+
+#### 🔴 Option B: Twilio
+*Global standard, slightly more expensive.*
+1.  **Sign Up**: Go to [twilio.com](https://twilio.com).
+2.  **Get a Number**: Buy a number with Voice capabilities.
+3.  **Credentials**: 
+    - Copy **Account SID** from the dashboard. This is `CALLME_PHONE_ACCOUNT_SID`.
+    - Copy **Auth Token**. This is `CALLME_PHONE_AUTH_TOKEN`.
+4.  **Configure Number**:
+    - Go to your Active Number settings.
+    - Under "Voice & Fax", set "A Call Comes In" to **Webhook**.
+    - Set the URL to your Ngrok URL + `/webhooks/voice` (e.g. `https://your-server.ngrok-free.app/webhooks/voice`).
+    - Ensure it is set to **HTTP POST**.
+
+#### 🟢 Option C: Plivo
+*Great for India/Global markets.*
+1.  **Sign Up**: Go to [plivo.com](https://plivo.com).
+2.  **Get a Number**: Buy a voice-enabled number.
+3.  **Credentials**:
+    - Go to Dashboard.
+    - Copy **Auth ID**. This is `CALLME_PHONE_ACCOUNT_SID`.
+    - Copy **Auth Token**. This is `CALLME_PHONE_AUTH_TOKEN`.
+4.  **Configure Application**:
+    - Go to **Voice > Applications**.
+    - Create a new Application (e.g., "Gemini Agent").
+    - Set **Answer URL** to your Ngrok URL + `/webhooks/voice`.
+    - Set Method to **POST**.
+    - Click "Create Application".
+5.  **Assign Number**: Go to your Phone Numbers and attach the purchased number to this Application.
+
+### 2. Google Cloud Setup
+
+1.  Create a project in [Google Cloud Console](https://console.cloud.google.com/).
+2.  Enable **Cloud Text-to-Speech API**.
+3.  Enable **Cloud Speech-to-Text API**.
+4.  **Authentication**:
+    - **Local**: Install `gcloud` CLI and run `gcloud auth application-default login`.
+    - **Server**: Create a Service Account, download the JSON key, and set `GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json`.
+
+### 3. Environment Variables
 
 ## Installation
 

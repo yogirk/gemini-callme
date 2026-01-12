@@ -146,6 +146,10 @@ export class CallManager {
                 if (msg.event === 'start' && msg.streamSid) {
                     state.streamSid = msg.streamSid;
                 }
+                // Plivo: Capture streamId
+                if (msg.event === 'start' && msg.streamId) {
+                    state.streamSid = msg.streamId; // reuse streamSid field for Plivo streamId
+                }
 
                 if (msg.event === 'media' && msg.media && msg.media.payload) {
                     const payload = Buffer.from(msg.media.payload, 'base64');
@@ -204,6 +208,31 @@ export class CallManager {
             // Send 200 OK
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ status: 'ok' }));
+        }
+        else if (providerName === 'plivo') {
+            // Plivo uses 'CallUUID' instead of 'CallSid'
+            const callUuid = reqBody.CallUUID;
+            const callId = this.providerCallIdToCallId.get(callUuid);
+
+            res.writeHead(200, { 'Content-Type': 'application/xml' });
+
+            if (callId) {
+                const state = this.activeCalls.get(callId);
+                if (state) {
+                    const streamUrl = `wss://${new URL(this.publicUrl).host}/media-stream?token=${state.wsToken}`;
+                    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Stream bidirectional="true" audioTrack="inbound" streamTimeout="86400">
+    ${streamUrl}
+  </Stream>
+</Response>`;
+                    res.end(xml);
+                    return;
+                }
+            }
+
+            // Default: Hangup if unknown call
+            res.end('<Response><Hangup/></Response>');
         }
         else if (providerName === 'twilio') {
             // Twilio sends form data usually, parsed before header?

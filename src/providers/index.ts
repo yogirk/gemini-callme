@@ -2,12 +2,20 @@
 import { PhoneProvider, STTProvider, TTSProvider, ProviderRegistry } from './types.js';
 import { TelnyxPhoneProvider } from './telnyx.js';
 import { TwilioPhoneProvider } from './twilio.js';
+import { PlivoPhoneProvider } from './plivo.js';
 import { GoogleTTSProvider } from '../services/tts.js';
 import { GoogleSTTProvider } from '../services/stt.js';
 
 export function createProviders(): ProviderRegistry {
+    let phoneProvider;
+    switch (process.env.CALLME_PHONE_PROVIDER) {
+        case 'twilio': phoneProvider = new TwilioPhoneProvider(); break;
+        case 'plivo': phoneProvider = new PlivoPhoneProvider(); break;
+        default: phoneProvider = new TelnyxPhoneProvider();
+    }
+
     return {
-        phone: process.env.CALLME_PHONE_PROVIDER === 'twilio' ? new TwilioPhoneProvider() : new TelnyxPhoneProvider(),
+        phone: phoneProvider,
         tts: new GoogleTTSProvider(),
         stt: new GoogleSTTProvider(),
     };

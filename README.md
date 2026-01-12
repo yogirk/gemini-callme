@@ -1,6 +1,6 @@
 # Gemini Call Me 📞
 
-**Gemini Call Me** is an MCP (Model Context Protocol) server extension that gives your AI agent the ability to call you on the phone. Designed for the Gemini ecosystem, it leverages **Google Cloud Text-to-Speech** and **Speech-to-Text** for high-quality, natural voice interactions.
+**Gemini Call Me** is an MCP server extension that gives your AI agent the ability to call you on the phone. Designed for the Gemini ecosystem, it leverages **Google Cloud Text-to-Speech** and **Speech-to-Text** for high-quality, natural voice interactions.
 
 Imagine starting a long-running task with Gemini CLI and walking away. When it's done—or if it needs a decision—your phone rings, and you can chat with the agent in real-time.
 

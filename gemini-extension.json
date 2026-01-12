@@ -1,0 +1,14 @@
+{
+    "id": "gemini-call-me",
+    "name": "Call Me",
+    "description": "Enables Gemini to initiate and manage phone calls with the user.",
+    "version": "1.0.0",
+    "mcpServers": {
+        "default": {
+            "command": "node",
+            "args": [
+                "dist/index.js"
+            ]
+        }
+    }
+}

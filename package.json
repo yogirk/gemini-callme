@@ -1,7 +1,7 @@
 {
   "name": "gemini-call-me",
   "version": "1.0.0",
-  "description": "Gemini CLI extension for phone calls",
+  "description": "MCP server extension that gives AI agents the ability to call you on the phone",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
@@ -11,8 +11,6 @@
     "inspector": "npx @modelcontextprotocol/inspector node dist/index.js"
   },
   "dependencies": {
-    "@google-cloud/speech": "^6.7.0",
-    "@google-cloud/text-to-speech": "^5.3.0",
     "@modelcontextprotocol/sdk": "^1.0.4",
     "@ngrok/ngrok": "^1.4.1",
     "dotenv": "^16.4.7",

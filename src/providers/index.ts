@@ -1,39 +1,35 @@
-
-import { PhoneProvider, STTProvider, TTSProvider, ProviderRegistry } from './types.js';
+import { PhoneProvider, ProviderRegistry } from './types.js';
 import { TelnyxPhoneProvider } from './telnyx.js';
-import { TwilioPhoneProvider } from './twilio.js';
-import { PlivoPhoneProvider } from './plivo.js';
-import { GoogleTTSProvider } from '../services/tts.js';
-import { GoogleSTTProvider } from '../services/stt.js';
+import { VapiPhoneProvider } from './vapi.js';
 
 export function createProviders(): ProviderRegistry {
-    let phoneProvider;
-    switch (process.env.CALLME_PHONE_PROVIDER) {
-        case 'twilio': phoneProvider = new TwilioPhoneProvider(); break;
-        case 'plivo': phoneProvider = new PlivoPhoneProvider(); break;
-        default: phoneProvider = new TelnyxPhoneProvider();
+    let phoneProvider: PhoneProvider;
+
+    const provider = process.env.CALLME_PHONE_PROVIDER || 'vapi';
+
+    switch (provider) {
+        case 'telnyx':
+            phoneProvider = new TelnyxPhoneProvider();
+            phoneProvider.initialize({
+                accountSid: process.env.CALLME_PHONE_ACCOUNT_SID,
+                authToken: process.env.CALLME_PHONE_AUTH_TOKEN,
+            });
+            break;
+        case 'vapi':
+        default:
+            phoneProvider = new VapiPhoneProvider();
+            phoneProvider.initialize({
+                apiKey: process.env.CALLME_VAPI_API_KEY,
+                phoneNumberId: process.env.CALLME_VAPI_PHONE_NUMBER_ID,
+            });
+            break;
     }
 
     return {
         phone: phoneProvider,
-        tts: new GoogleTTSProvider(),
-        stt: new GoogleSTTProvider(),
     };
 }
 
-export function initializeProviders(providers: ProviderRegistry) {
-    const config = {
-        phoneProvider: process.env.CALLME_PHONE_PROVIDER || 'telnyx',
-        accountSid: process.env.CALLME_PHONE_ACCOUNT_SID,
-        authToken: process.env.CALLME_PHONE_AUTH_TOKEN,
-        phoneNumber: process.env.CALLME_PHONE_NUMBER,
-
-        // GCP auto-auth
-        ttsVoice: process.env.CALLME_TTS_VOICE || 'en-US-Journey-F',
-        sttModel: process.env.CALLME_STT_MODEL || 'latest_long',
-    };
-
-    providers.phone.initialize(config);
-    providers.tts.initialize(config);
-    providers.stt.initialize(config);
+export function initializeProviders(_providers: ProviderRegistry) {
+    // Initialization done in createProviders
 }

@@ -1,173 +1,127 @@
-# Gemini Call Me 📞
+# Gemini Call Me
 
-**Gemini Call Me** is an MCP server extension that gives your AI agent the ability to call you on the phone. Designed for the Gemini ecosystem, it leverages **Google Cloud Text-to-Speech** and **Speech-to-Text** for high-quality, natural voice interactions.
-
-Imagine starting a long-running task with Gemini CLI and walking away. When it's done—or if it needs a decision—your phone rings, and you can chat with the agent in real-time.
+An MCP server extension that gives AI agents the ability to call you on the phone. When your agent needs your attention or a decision, your phone rings and you can have a real-time voice conversation.
 
 ## Features
 
-- 📱 **Real Phone Calls**: Initiates calls via **Telnyx** (recommended) or **Twilio**.
-- 🗣️ **Google Voice AI**: Uses Google Cloud's Neural2 voices for natural speech and Speech-to-Text V2 for accurate transcription.
-- 🔌 **MCP Compatible**: Works out-of-the-box with Gemini CLI and other MCP clients.
-- 💬 **Two-Way Conversation**: Full "Reason and Act" loop support—the agent speaks, listens, and responds.
+- **Real Phone Calls**: Initiates calls via Vapi (recommended) or Telnyx
+- **Two-Way Conversation**: Full conversational loop - the agent speaks, listens, and responds
+- **MCP Compatible**: Works with Gemini CLI and other MCP clients
+- **Automatic Tunneling**: Uses ngrok to expose webhooks without manual configuration
 
-## Configuration & Setup
+## Prerequisites
 
-### 1. Provider Setup
+### 1. Vapi Setup (Recommended)
 
-#### 🔵 Option A: Telnyx (Recommended)
-*Cheaper (~$0.007/min) and straightforward.*
-1.  **Sign Up**: Go to [telnyx.com](https://telnyx.com) and create an account.
-2.  **Get a Number**: Buy a Voice-capable number in the portal.
-3.  **Create API Key**: Go to **Account Settings > Keys & Credentials** and create an API Key. This is your `CALLME_PHONE_AUTH_TOKEN`.
-4.  **Create Connection**:
-    - Go to **Voice > SIP Connections** (or Call Control Applications).
-    - Create a new "Call Control" application.
-    - Set the **Webhook URL** to your Ngrok URL + `/webhooks/voice` (e.g., `https://your-server.ngrok-free.app/webhooks/voice`).
-    - *Note: If running locally, you'll update this URL every time Ngrok restarts unless you have a static domain.*
-    - Copy the **Connection ID** (or App ID). This is your `CALLME_PHONE_ACCOUNT_SID`.
-5.  **Assign Number**: Assign your purchased number to this Connection/App.
+1. Sign up at [vapi.ai](https://vapi.ai)
+2. Get your **Private API Key** from the dashboard (not the public key)
+3. Get a phone number:
+   - Use a Vapi phone number, OR
+   - Import an existing number from Twilio/Telnyx for international calling support
 
-#### 🔴 Option B: Twilio
-*Global standard, slightly more expensive.*
-1.  **Sign Up**: Go to [twilio.com](https://twilio.com).
-2.  **Get a Number**: Buy a number with Voice capabilities.
-3.  **Credentials**: 
-    - Copy **Account SID** from the dashboard. This is `CALLME_PHONE_ACCOUNT_SID`.
-    - Copy **Auth Token**. This is `CALLME_PHONE_AUTH_TOKEN`.
-4.  **Configure Number**:
-    - Go to your Active Number settings.
-    - Under "Voice & Fax", set "A Call Comes In" to **Webhook**.
-    - Set the URL to your Ngrok URL + `/webhooks/voice` (e.g. `https://your-server.ngrok-free.app/webhooks/voice`).
-    - Ensure it is set to **HTTP POST**.
+### 2. Ngrok Setup
 
-#### 🟢 Option C: Plivo
-*Great for India/Global markets.*
-1.  **Sign Up**: Go to [plivo.com](https://plivo.com).
-2.  **Get a Number**: Buy a voice-enabled number.
-3.  **Credentials**:
-    - Go to Dashboard.
-    - Copy **Auth ID**. This is `CALLME_PHONE_ACCOUNT_SID`.
-    - Copy **Auth Token**. This is `CALLME_PHONE_AUTH_TOKEN`.
-4.  **Configure Application**:
-    - Go to **Voice > Applications**.
-    - Create a new Application (e.g., "Gemini Agent").
-    - Set **Answer URL** to your Ngrok URL + `/webhooks/voice`.
-    - Set Method to **POST**.
-    - Click "Create Application".
-5.  **Assign Number**: Go to your Phone Numbers and attach the purchased number to this Application.
-
-### 2. Google Cloud Setup
-
-1.  Create a project in [Google Cloud Console](https://console.cloud.google.com/).
-2.  Enable **Cloud Text-to-Speech API**.
-3.  Enable **Cloud Speech-to-Text API**.
-4.  **Authentication**:
-    - **Local**: Install `gcloud` CLI and run `gcloud auth application-default login`.
-    - **Server**: Create a Service Account, download the JSON key, and set `GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json`.
+1. Sign up at [ngrok.com](https://ngrok.com) (free tier works)
+2. Get your authtoken from the dashboard
 
 ### 3. Environment Variables
 
+Copy `.env.template` to `.env` and fill in:
+
+```bash
+# Server
+CALLME_PORT=3333
+
+# Ngrok
+CALLME_NGROK_AUTHTOKEN=your_ngrok_authtoken
+
+# Provider (vapi or telnyx)
+CALLME_PHONE_PROVIDER=vapi
+
+# Vapi
+CALLME_VAPI_API_KEY=your_private_api_key
+CALLME_VAPI_PHONE_NUMBER_ID=your_phone_number_id
+
+# Your phone number to receive calls
+CALLME_USER_PHONE_NUMBER=+1234567890
+```
+
 ## Installation
 
-1.  **Clone the repository**:
-    ```bash
-    git clone https://github.com/yourusername/gemini-call-me.git
-    cd gemini-call-me
-    ```
+```bash
+# Clone the repository
+git clone https://github.com/AshishSinha5/gemini-call-me.git
+cd gemini-call-me
 
-2.  **Install dependencies**:
-    ```bash
-    npm install
-    ```
+# Install dependencies
+npm install
 
-3.  **Configure Environment**:
-    Copy the template and fill in your credentials.
-    ```bash
-    cp .env.template .env
-    ```
+# Configure environment
+cp .env.template .env
+# Edit .env with your credentials
 
-    > **Note**: For Google Cloud authentication, ensure `GOOGLE_APPLICATION_CREDENTIALS` is set in your `.env` or run `gcloud auth application-default login`.
+# Build
+npm run build
+```
 
-4.  **Build**:
-    ```bash
-    npm run build
-    ```
+## Using with Gemini CLI
 
-## Installing in Gemini CLI
+Add to your Gemini CLI settings (`~/.gemini/settings.json`):
 
-Once built, you can install this extension into Gemini CLI (or compatible agents) by pointing to this directory.
-
-1.  **Ensure you have configured your `.env` file** as described in the Prerequisites.
-
-2.  **Register the Extension**:
-    Depending on your Gemini CLI version, you typically register a local extension by path.
-
-    **Option A: Configuration File**
-    Add the extension to your local `gemini.config.json` (or equivalent):
-    ```json
-    {
-      "extensions": {
-        "call-me": "/absolute/path/to/gemini-call-me"
+```json
+{
+  "mcpServers": {
+    "call-me": {
+      "command": "node",
+      "args": ["/absolute/path/to/gemini-call-me/dist/index.js"],
+      "env": {
+        "CALLME_PORT": "3333",
+        "CALLME_NGROK_AUTHTOKEN": "your_token",
+        "CALLME_PHONE_PROVIDER": "vapi",
+        "CALLME_VAPI_API_KEY": "your_key",
+        "CALLME_VAPI_PHONE_NUMBER_ID": "your_phone_id",
+        "CALLME_USER_PHONE_NUMBER": "+1234567890"
       }
     }
-    ```
+  }
+}
+```
 
-    **Option B: CLI Command**
-    ```bash
-    gemini extension add ./gemini-call-me
-    ```
-    *(Adjust the command based on your specific Gemini CLI version documentation)*
+## Available Tools
 
-    The extension will automatically start the MCP server using the configuration in `gemini-extension.json`.
+When connected, your AI agent has access to:
 
-## Usage
+| Tool | Description |
+|------|-------------|
+| `initiate_call(message)` | Calls your phone and speaks the initial message |
+| `continue_call(call_id, message)` | Speaks a follow-up message and waits for your response |
+| `end_call(call_id, message)` | Says goodbye and ends the call |
 
-### Running Locally
+## Architecture
 
-To start the MCP server:
+```
+Gemini CLI --[MCP/stdio]--> Local Server --[HTTP]--> Ngrok --[Webhook]--> Vapi
+                                  ^                                        |
+                                  |                                        v
+                                  +---- Tool Results <---- Voice Call ---- User
+```
+
+The server creates a transient Vapi assistant for each call that relays messages between the AI agent and the user via tool calls.
+
+## Running Standalone
 
 ```bash
 npm start
 ```
 
-This will:
-1.  Start the MCP server on stdio.
-2.  Launch an HTTP server for webhooks.
-3.  Automatically create an Ngrok tunnel to expose your local server to the phone provider.
+This starts the MCP server on stdio and an HTTP server for webhooks.
 
-### Using with Gemini CLI
+## Troubleshooting
 
-Add the MCP server to your Gemini configuration (or other MCP client settings). Since this server needs to run indefinitely to handle webhooks, it's best suited as a persistent background server or launched directly by the client.
-
-### Available Tools
-
-When connected, the agent has access to:
-
-- `initiate_call(message: string)`: Calls your configured number and speaks the message.
-- `continue_call(call_id: string, message: string)`: Speaks a follow-up message and waits for your response.
-- `speak_to_user(call_id: string, message: string)`: Speaks a message without waiting for a reply (useful for status updates).
-- `end_call(call_id: string, message: string)`: Says goodbye and hangs up.
-
-## Architecture
-
-This project implements a local MCP server that acts as a bridge between the AI agent and the telephony network.
-
-```mermaid
-graph LR
-    Agent[Gemini CLI] -- MCP (Stdio) --> Server[Local Server]
-    Server -- WebSocket --> Ngrok
-    Ngrok -- SIP/RTP --> PhoneProvider[Telnyx/Twilio]
-    PhoneProvider --> User[User Phone]
-    
-    Server -- Text --> GCP_TTS[Google TTS]
-    GCP_STT[Google STT] -- Text --> Server
-```
-
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request.
+- **Ngrok session conflicts**: If you see ngrok errors, ensure no other ngrok sessions are running (`pkill -f ngrok`)
+- **International calling**: Free Vapi numbers may not support international calls. Import a Twilio number into Vapi for international support.
+- **Wrong API key**: Make sure you're using the **Private** API key from Vapi, not the Public key
 
 ## License
 
-[MIT](LICENSE)
+MIT

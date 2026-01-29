@@ -1,25 +1,32 @@
 {
-  "name": "gemini-call-me",
+  "name": "geminicall",
   "version": "1.0.0",
-  "description": "MCP server extension that gives AI agents the ability to call you on the phone",
+  "description": "MCP server enabling Gemini CLI to make phone calls to users",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "tsx watch src/index.ts",
-    "inspector": "npx @modelcontextprotocol/inspector node dist/index.js"
+    "dev": "tsc --watch"
   },
+  "keywords": [
+    "gemini",
+    "mcp",
+    "phone",
+    "twilio",
+    "telnyx"
+  ],
+  "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
-    "@ngrok/ngrok": "^1.4.1",
-    "dotenv": "^16.4.7",
+    "openai": "^4.77.3",
+    "twilio": "^5.4.0",
+    "untun": "^0.1.3",
     "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
     "@types/ws": "^8.5.13",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.2"
   }
 }

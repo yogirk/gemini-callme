@@ -1,169 +1,203 @@
 #!/usr/bin/env node
-import 'dotenv/config';
+
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import http from 'http';
-import ngrok from '@ngrok/ngrok';
-
-import { createProviders, initializeProviders } from './providers/index.js';
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
+import { loadConfig } from './config.js';
 import { CallManager } from './call-manager.js';
 
+const TOOLS = [
+  {
+    name: 'initiate_call',
+    description: 'Start a phone call to the user with an initial message. Returns the call ID and the user\'s spoken response.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        message: {
+          type: 'string',
+          description: 'The message to speak when the user answers',
+        },
+      },
+      required: ['message'],
+    },
+  },
+  {
+    name: 'continue_call',
+    description: 'Continue an active phone call by speaking a message and waiting for the user\'s response.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        callId: {
+          type: 'string',
+          description: 'The ID of the active call',
+        },
+        message: {
+          type: 'string',
+          description: 'The message to speak to the user',
+        },
+      },
+      required: ['callId', 'message'],
+    },
+  },
+  {
+    name: 'speak_to_user',
+    description: 'Speak a message to the user without waiting for a response. Use this for status updates before long operations.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        callId: {
+          type: 'string',
+          description: 'The ID of the active call',
+        },
+        message: {
+          type: 'string',
+          description: 'The message to speak to the user',
+        },
+      },
+      required: ['callId', 'message'],
+    },
+  },
+  {
+    name: 'end_call',
+    description: 'End an active phone call with an optional closing message.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        callId: {
+          type: 'string',
+          description: 'The ID of the active call',
+        },
+        message: {
+          type: 'string',
+          description: 'Optional closing message to speak before ending the call',
+        },
+      },
+      required: ['callId'],
+    },
+  },
+];
+
 async function main() {
-    const PORT = parseInt(process.env.CALLME_PORT || '3333', 10);
+  // Load configuration
+  const config = loadConfig();
 
-    // Clean up any lingering ngrok sessions from previous runs
-    try {
-        await ngrok.disconnect();
-    } catch (_) { }
+  // Create call manager
+  const callManager = new CallManager(config);
 
-    // Graceful shutdown handler
-    let ngrokListener: any = null;
-    let httpServer: http.Server | null = null;
+  // Start services
+  await callManager.start();
 
-    const cleanup = async () => {
-        if (ngrokListener) {
-            try {
-                await ngrokListener.close();
-            } catch (_) { }
-        }
-        try {
-            await ngrok.disconnect();
-        } catch (_) { }
-        if (httpServer) {
-            httpServer.close();
-        }
-        process.exit(0);
-    };
-
-    // Handle all termination signals
-    process.on('SIGTERM', cleanup);
-    process.on('SIGINT', cleanup);
-    process.on('SIGHUP', cleanup);
-    process.on('uncaughtException', cleanup);
-    process.on('unhandledRejection', cleanup);
-
-    // Setup Providers
-    const providers = createProviders();
-    initializeProviders(providers);
-
-    // Start Ngrok tunnel
-    let publicUrl = '';
-    try {
-        ngrokListener = await ngrok.forward({
-            addr: PORT,
-            authtoken: process.env.CALLME_NGROK_AUTHTOKEN
-        });
-        publicUrl = ngrokListener.url() || '';
-    } catch (e) {
-        console.error('Failed to start ngrok:', e);
-        process.exit(1);
+  // Create MCP server
+  const server = new Server(
+    {
+      name: 'geminicall',
+      version: '1.0.0',
+    },
+    {
+      capabilities: {
+        tools: {},
+      },
     }
+  );
 
-    // Setup CallManager
-    const callManager = new CallManager(
-        providers,
-        publicUrl,
-        process.env.CALLME_USER_PHONE_NUMBER || '',
-        process.env.CALLME_PHONE_NUMBER || ''
-    );
+  // Register tool list handler
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    return { tools: TOOLS };
+  });
 
-    // HTTP Server for Vapi webhooks
-    httpServer = http.createServer(async (req, res) => {
-        const url = new URL(req.url || '/', `http://${req.headers.host}`);
+  // Register tool call handler
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const { name, arguments: args } = request.params;
 
-        if (req.method === 'POST' && url.pathname === '/webhooks/vapi') {
-            const chunks: Buffer[] = [];
-            for await (const chunk of req) chunks.push(chunk);
-            const bodyStr = Buffer.concat(chunks).toString();
-
-            let parsedBody: any = {};
-            try {
-                parsedBody = JSON.parse(bodyStr || '{}');
-            } catch (_) { }
-
-            await callManager.handleWebhook(parsedBody, res);
-        } else {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ status: 'ok' }));
+    try {
+      switch (name) {
+        case 'initiate_call': {
+          const message = (args as { message: string }).message;
+          const result = await callManager.initiateCall(message);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+          };
         }
-    });
 
-    httpServer.listen(PORT);
+        case 'continue_call': {
+          const { callId, message } = args as { callId: string; message: string };
+          const result = await callManager.continueCall(callId, message);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+          };
+        }
 
-    // MCP Server
-    const mcpServer = new Server(
-        { name: 'gemini-call-me', version: '1.0.0' },
-        { capabilities: { tools: {} } }
-    );
+        case 'speak_to_user': {
+          const { callId, message } = args as { callId: string; message: string };
+          await callManager.speakToUser(callId, message);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({ success: true }, null, 2),
+              },
+            ],
+          };
+        }
 
-    mcpServer.setRequestHandler(ListToolsRequestSchema, async () => ({
-        tools: [
-            {
-                name: 'initiate_call',
-                description: 'Start a phone call to the user. Returns the call ID and waits for the user to respond.',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        message: { type: 'string', description: 'Initial message to speak to the user.' },
-                    },
-                    required: ['message'],
-                },
-            },
-            {
-                name: 'continue_call',
-                description: 'Send a response to the user and wait for their next message.',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        call_id: { type: 'string', description: 'The call ID from initiate_call.' },
-                        message: { type: 'string', description: 'Your response to speak to the user.' },
-                    },
-                    required: ['call_id', 'message'],
-                },
-            },
-            {
-                name: 'end_call',
-                description: 'End the phone call with a final message.',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        call_id: { type: 'string', description: 'The call ID.' },
-                        message: { type: 'string', description: 'Final goodbye message.' },
-                    },
-                    required: ['call_id', 'message'],
-                },
-            },
+        case 'end_call': {
+          const { callId, message } = args as { callId: string; message?: string };
+          const result = await callManager.endCall(callId, message);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({ success: true, duration: result.duration }, null, 2),
+              },
+            ],
+          };
+        }
+
+        default:
+          throw new Error(`Unknown tool: ${name}`);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({ error: errorMessage }, null, 2),
+          },
         ],
-    }));
+        isError: true,
+      };
+    }
+  });
 
-    mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
-        try {
-            const name = request.params.name;
-            const args = request.params.arguments as any;
+  // Handle shutdown
+  const shutdown = async () => {
+    await callManager.stop();
+    process.exit(0);
+  };
 
-            if (name === 'initiate_call') {
-                const result = await callManager.initiateCall(args.message);
-                return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-            } else if (name === 'continue_call') {
-                const response = await callManager.continueCall(args.call_id, args.message);
-                return { content: [{ type: 'text', text: response }] };
-            } else if (name === 'end_call') {
-                await callManager.endCall(args.call_id, args.message);
-                return { content: [{ type: 'text', text: 'Call ended.' }] };
-            }
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 
-            throw new Error('Unknown tool');
-        } catch (e: any) {
-            return {
-                content: [{ type: 'text', text: `Error: ${e.message}` }],
-                isError: true,
-            };
-        }
-    });
-
-    const transport = new StdioServerTransport();
-    await mcpServer.connect(transport);
+  // Connect transport
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
 }
 
-main().catch(console.error);
+main().catch((error) => {
+  console.error('Fatal error:', error);
+  process.exit(1);
+});

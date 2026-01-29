@@ -1,35 +1,51 @@
-import { PhoneProvider, ProviderRegistry } from './types.js';
-import { TelnyxPhoneProvider } from './telnyx.js';
-import { VapiPhoneProvider } from './vapi.js';
+import { ServerResponse } from 'http';
+import { WebhookEvent } from '../webhook-server.js';
 
-export function createProviders(): ProviderRegistry {
-    let phoneProvider: PhoneProvider;
-
-    const provider = process.env.CALLME_PHONE_PROVIDER || 'vapi';
-
-    switch (provider) {
-        case 'telnyx':
-            phoneProvider = new TelnyxPhoneProvider();
-            phoneProvider.initialize({
-                accountSid: process.env.CALLME_PHONE_ACCOUNT_SID,
-                authToken: process.env.CALLME_PHONE_AUTH_TOKEN,
-            });
-            break;
-        case 'vapi':
-        default:
-            phoneProvider = new VapiPhoneProvider();
-            phoneProvider.initialize({
-                apiKey: process.env.CALLME_VAPI_API_KEY,
-                phoneNumberId: process.env.CALLME_VAPI_PHONE_NUMBER_ID,
-            });
-            break;
-    }
-
-    return {
-        phone: phoneProvider,
-    };
+export interface CallResult {
+  callId: string;
+  callControlId?: string;
 }
 
-export function initializeProviders(_providers: ProviderRegistry) {
-    // Initialization done in createProviders
+export interface PhoneProvider {
+  /**
+   * Provider name for identification
+   */
+  readonly name: 'twilio' | 'telnyx';
+
+  /**
+   * Initiate an outbound call
+   */
+  initiateCall(
+    toPhone: string,
+    fromPhone: string,
+    webhookUrl: string,
+    wsToken: string
+  ): Promise<CallResult>;
+
+  /**
+   * Handle incoming webhook event
+   * Returns TwiML/TeXML response if applicable
+   */
+  handleWebhook(
+    event: WebhookEvent,
+    wsUrl: string,
+    res?: ServerResponse
+  ): Promise<void>;
+
+  /**
+   * Verify webhook signature
+   */
+  verifySignature(
+    rawBody: string,
+    headers: Record<string, string>,
+    webhookUrl: string
+  ): boolean;
+
+  /**
+   * Hang up an active call
+   */
+  hangup(callId: string): Promise<void>;
 }
+
+export { TwilioProvider } from './twilio.js';
+export { TelnyxProvider } from './telnyx.js';
